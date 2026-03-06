@@ -1,0 +1,9 @@
+streamlit
+requests
+python-dotenv
+faiss-cpu
+llama-index-core
+llama-index-llms-groq
+llama-index-embeddings-huggingface
+llama-index-vector-stores-faiss
+sentence-transformers
