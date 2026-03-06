@@ -1,376 +1,321 @@
-# GitHub Repository Assistant using Corrective RAG
+# 🤖 GitHub Repository Assistant using Corrective RAG
 
-An AI-powered application that allows users to **query and understand GitHub repositories using natural language**.  
+An AI-powered application that allows users to **query and understand GitHub repositories using natural language**.
+
 The system indexes repository code and documentation, retrieves relevant code segments, and generates grounded answers with **file and line citations**.
 
-This project implements **Corrective Retrieval-Augmented Generation (CRAG)** to improve answer accuracy by validating retrieved context and retrying retrieval when the context is not relevant.
+It implements **Corrective Retrieval-Augmented Generation (CRAG)** to improve answer accuracy by verifying retrieval quality before generating responses.
+
+The project provides a simple **Streamlit interface** where users can paste GitHub repository URLs and explore the codebase interactively.
 
 ---
 
-# Overview
+# 🎯 Overview
 
-Understanding large codebases can be difficult, especially when developers need to quickly locate specific functionality or understand the architecture of an unfamiliar repository.
+Understanding a new codebase often requires manually searching through many folders and files.
 
-This project solves that problem by allowing users to:
+This project simplifies that process by allowing users to **ask natural language questions about a repository**.
 
-- Paste a GitHub repository URL
-- Automatically index the repository
-- Ask questions about the repository
-- Receive answers grounded in the repository code with citations
+The system performs the following steps:
 
-The system also generates a **repository map** that highlights key files, entry points, and project structure to help users quickly understand the architecture.
-
----
-
-# Key Features
-
-## Natural Language Code Querying
-
-Users can ask questions about a repository using natural language.
-
-Examples:
-
-- "Where is authentication implemented?"
-- "How does the database connection work?"
-- "Which file handles API routing?"
-
-The system retrieves relevant code and documentation to generate accurate answers.
+1. Downloads the repository from GitHub  
+2. Extracts useful code and documentation  
+3. Splits files into logical code chunks  
+4. Creates embeddings for semantic search  
+5. Retrieves relevant code segments  
+6. Uses **Corrective RAG** to verify retrieval quality  
+7. Generates answers grounded in repository code with citations  
 
 ---
 
-## Corrective RAG (CRAG)
+# 🧩 Core Components
 
-This project implements **Corrective Retrieval-Augmented Generation**, which improves reliability compared to traditional RAG.
+## Repository Ingestion
 
-Workflow:
+The system downloads repositories from GitHub and extracts relevant files for indexing.
 
-1. Retrieve relevant code chunks
-2. Use an LLM grader to evaluate retrieval relevance
-3. If retrieval quality is low, rewrite the query
-4. Perform retrieval again
-5. Generate the final answer using improved context
+During ingestion it filters unnecessary folders such as:
 
-This correction loop reduces hallucinations and improves answer quality.
+- `.git`
+- `node_modules`
+- `venv`
+- `dist`
+- `build`
+- `__pycache__`
+
+Implemented in:
+
+```text
+repo_ingest.py
+```
 
 ---
 
 ## Code-Aware Chunking
 
-Python repositories are chunked using the **AST (Abstract Syntax Tree)**.
+Instead of splitting files randomly, the system uses structure-aware chunking.
 
-Instead of splitting text randomly, the system extracts:
+For Python files it extracts:
 
-- Functions
-- Classes
-- Module-level imports
+- functions
+- classes
+- module headers
 
 This ensures that logical code units remain intact during retrieval.
 
----
+Each chunk stores metadata including:
 
-## Precise Citations
-
-Every indexed code chunk stores metadata including:
-
-- Repository name
-- File path
-- Starting line number
-- Ending line number
-
-Answers include citations such as:
-
-
-backend/auth/jwt.py:L42-L78
-
-
-This allows users to immediately locate the relevant code in the repository.
+- repository name
+- file path
+- start line
+- end line
 
 ---
 
-## Hybrid Search (Vector + Keyword)
+## Hybrid Retrieval
 
-The retrieval system combines two search techniques.
+The retrieval system combines two approaches.
 
 ### Semantic Search
-Uses embeddings to retrieve semantically relevant code.
 
-### Keyword Search (BM25)
-Ensures exact matches for:
+Uses embeddings to find conceptually related code.
 
-- Function names
-- Class names
-- Variables
-- Configuration keys
+### Keyword Search
 
-Combining both techniques improves retrieval reliability.
+Ensures exact matching for:
+
+- function names
+- class names
+- variable names
+- configuration keys
+
+Combining both improves retrieval reliability for code-related queries.
+
+---
+
+## Corrective RAG (CRAG)
+
+Traditional RAG sometimes retrieves irrelevant context.
+
+CRAG improves reliability using a correction loop.
+
+Workflow:
+
+1. Retrieve relevant chunks  
+2. Evaluate retrieval relevance  
+3. Rewrite query if needed  
+4. Retrieve again  
+5. Generate final answer  
+
+This reduces hallucinations and ensures answers remain grounded in repository code.
+
+---
+
+## Citations
+
+Every response includes source references.
+
+Example:
+
+```text
+backend/auth/jwt.py:L42-L78
+```
+
+This allows developers to quickly navigate to the relevant section of code.
 
 ---
 
 ## Multi-Repository Support
 
-Users can index multiple repositories simultaneously and choose:
+Users can index multiple repositories and search:
 
-- A specific repository
-- Or search across all indexed repositories
+- within a specific repository
+- across all indexed repositories
 
-This allows comparison between different projects.
-
----
-
-## Repository Map
-
-The system generates a high-level overview of each repository including:
-
-- Project file tree
-- Detected entrypoints
-- Important configuration files
-
-This helps users quickly understand the architecture.
+This enables cross-repository comparisons.
 
 ---
 
-# System Architecture
+# 🖥️ User Interface
 
-The application consists of four main components.
+The application provides a **Streamlit web interface**.
 
-## Repository Ingestion
+Users can:
 
-The repository is downloaded from GitHub and extracted locally.
-
-Files are filtered to remove irrelevant content such as:
-
-- Build artifacts
-- Dependency folders
-- Binary files
-
-Relevant code and documentation are then processed.
+1. Paste GitHub repository URLs  
+2. Ingest repositories  
+3. Ask natural language questions  
+4. View answers with code citations  
+5. Explore repository structure  
 
 ---
 
-## Code Chunking
+# 📂 Project Structure
 
-Files are converted into structured chunks.
-
-Python files use AST parsing to extract:
-
-- Functions
-- Classes
-- Module headers
-
-Other file types use structured text chunking.
-
-Each chunk is stored with metadata.
-
----
-
-## Indexing and Retrieval
-
-Chunks are converted into vector embeddings and stored in a vector index.
-
-Retrieval uses a hybrid strategy:
-
-- Vector similarity search
-- BM25 keyword search
-
-Results are merged and ranked.
-
----
-
-## CRAG Pipeline
-
-When a user submits a query:
-
-1. Retrieve top code chunks
-2. Use an LLM grader to check relevance
-3. If relevance is low, rewrite the query
-4. Retrieve again
-5. Generate answer using final context
-
-This ensures answers remain grounded in repository code.
-
----
-
-# Project Structure
-
-
+```text
 github-repository-assistant-crag
 │
 ├── app.py
+│   Streamlit user interface
+│
 ├── config.py
+│   Model configuration and API setup
+│
 ├── repo_ingest.py
+│   Repository download, parsing, and chunking
+│
 ├── rag_engine.py
+│   Retrieval engine and CRAG pipeline
+│
 ├── requirements.txt
-└── .env
-
-
-### app.py
-Streamlit user interface.
-
-### config.py
-Model configuration and application settings.
-
-### repo_ingest.py
-Handles repository download, filtering, chunking, and repository mapping.
-
-### rag_engine.py
-Implements hybrid retrieval and the CRAG pipeline.
+│   Python dependencies
+│
+├── .env
+│   API key configuration
+│
+└── README.md
+```
 
 ---
 
-# Installation
+# ⚙️ Tech Stack
 
-## Clone the repository
+**Programming Language**
 
+Python
 
+**AI Framework**
+
+LlamaIndex
+
+**LLM Provider**
+
+Groq API
+
+**Vector Database**
+
+FAISS
+
+**Embeddings**
+
+HuggingFace Embeddings
+
+**User Interface**
+
+Streamlit
+
+---
+
+# 🚀 Installation
+
+## Clone the Repository
+
+```bash
 git clone https://github.com/Sahilyadav1909/github-repository-assistant-crag.git
-
 cd github-repository-assistant-crag
-
+```
 
 ---
 
-## Create a virtual environment
+## Create Virtual Environment
 
-
+```bash
 python -m venv venv
+```
 
-
-Activate it:
+Activate it.
 
 ### Windows
 
+```bash
 venv\Scripts\activate
+```
 
+### Mac/Linux
 
-### Mac / Linux
-
+```bash
 source venv/bin/activate
-
+```
 
 ---
 
-## Install dependencies
+## Install Dependencies
 
-
+```bash
 pip install -r requirements.txt
-
+```
 
 ---
 
-# Environment Variables
+# 🔑 Environment Variables
 
-Create a `.env` file in the project root.
+Create a `.env` file.
 
-
+```bash
 GROQ_API_KEY=your_groq_api_key_here
+```
 
+Get a Groq API key from:
 
-This project uses the **Groq API** for LLM inference.
+```text
+https://console.groq.com
+```
 
 ---
 
-# Running the Application
+# ▶️ Running the Application
 
-Start the Streamlit application:
+Start the Streamlit server:
 
-
+```bash
 streamlit run app.py
+```
 
+Open in browser:
 
-The interface will open in your browser.
-
----
-
-# Usage Guide
-
-## Step 1: Add GitHub repositories
-
-Paste one or more repository URLs into the sidebar.
-
-Example:
-
-
-https://github.com/fastapi/fastapi
-
-
-Click **Ingest Repositories**.
+```text
+http://localhost:8501
+```
 
 ---
 
-## Step 2: Ask questions
+# 🔍 Example Queries
 
-Once indexing is complete, ask questions such as:
+Example questions you can ask:
 
-- "Where is request validation implemented?"
-- "How does the routing system work?"
-- "Which file initializes the application?"
-
----
-
-## Step 3: Review results
-
-The system returns:
-
-- A natural language answer
-- Cited source files
-- Line numbers for relevant code
+- Where is authentication implemented?
+- Which file initializes the application?
+- How are API routes defined?
+- Where is the database connection created?
+- What does the main entrypoint file do?
 
 ---
 
-# Example Output
-
-Question:
-
-
-Where is authentication implemented?
-
-
-Answer:
-
-
-Authentication logic is implemented in the JWT middleware.
-
-Source:
-backend/auth/jwt.py:L42-L78
-backend/auth/middleware.py:L10-L25
-
-
----
-
-# Technologies Used
-
-- Python
-- Streamlit
-- LlamaIndex
-- Groq LLM API
-- FAISS Vector Store
-- HuggingFace Embeddings
-- BM25 Keyword Search
-
----
-
-# Limitations
+# ⚠️ Limitations
 
 Current version supports:
 
-- Public GitHub repositories
-- Repositories of moderate size
+- public GitHub repositories
+- moderate repository sizes
 
-Future improvements may include:
-
-- Private repository support
-- Persistent vector storage
-- Additional programming language parsing
-- Improved architecture analysis
+Very large repositories may take longer to index.
 
 ---
 
-# Future Improvements
+# 📈 Future Improvements
 
-Possible enhancements include:
+Potential enhancements include:
 
-- Deeper architecture analysis using LLMs
-- Advanced repository summarization
-- Pull request and issue integration
-- Repository comparison tools
-- Conversational memory across sessions
+- private repository support
+- persistent vector storage
+- deeper repository architecture analysis
+- GitHub issues and PR understanding
+- conversational memory across sessions
+
+---
+
+# 👨‍💻 Author
+
+**Sahil Yadav**
+
+AI / Generative AI Projects
