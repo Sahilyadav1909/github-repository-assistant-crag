@@ -28,127 +28,174 @@ The system performs the following steps:
 
 ---
 
-# 🧩 Core Components
+# Key Features
 
-## Repository Ingestion
+## Natural Language Code Querying
 
-The system downloads repositories from GitHub and extracts relevant files for indexing.
+Users can ask questions about a repository using natural language.
 
-During ingestion it filters unnecessary folders such as:
+Examples:
 
-- `.git`
-- `node_modules`
-- `venv`
-- `dist`
-- `build`
-- `__pycache__`
+- "Where is authentication implemented?"
+- "How does the database connection work?"
+- "Which file handles API routing?"
 
-Implemented in:
-
-```text
-repo_ingest.py
-```
-
----
-
-## Code-Aware Chunking
-
-Instead of splitting files randomly, the system uses structure-aware chunking.
-
-For Python files it extracts:
-
-- functions
-- classes
-- module headers
-
-This ensures that logical code units remain intact during retrieval.
-
-Each chunk stores metadata including:
-
-- repository name
-- file path
-- start line
-- end line
-
----
-
-## Hybrid Retrieval
-
-The retrieval system combines two approaches.
-
-### Semantic Search
-
-Uses embeddings to find conceptually related code.
-
-### Keyword Search
-
-Ensures exact matching for:
-
-- function names
-- class names
-- variable names
-- configuration keys
-
-Combining both improves retrieval reliability for code-related queries.
+The system retrieves relevant code and documentation to generate accurate answers.
 
 ---
 
 ## Corrective RAG (CRAG)
 
-Traditional RAG sometimes retrieves irrelevant context.
-
-CRAG improves reliability using a correction loop.
+This project implements **Corrective Retrieval-Augmented Generation**, which improves reliability compared to traditional RAG.
 
 Workflow:
 
-1. Retrieve relevant chunks  
-2. Evaluate retrieval relevance  
-3. Rewrite query if needed  
-4. Retrieve again  
-5. Generate final answer  
+1. Retrieve relevant code chunks
+2. Use an LLM grader to evaluate retrieval relevance
+3. If retrieval quality is low, rewrite the query
+4. Perform retrieval again
+5. Generate the final answer using improved context
 
-This reduces hallucinations and ensures answers remain grounded in repository code.
+This correction loop reduces hallucinations and improves answer quality.
 
 ---
 
-## Citations
+## Code-Aware Chunking
 
-Every response includes source references.
+Python repositories are chunked using the **AST (Abstract Syntax Tree)**.
 
-Example:
+Instead of splitting text randomly, the system extracts:
 
-```text
+- Functions
+- Classes
+- Module-level imports
+
+This ensures that logical code units remain intact during retrieval.
+
+---
+
+## Precise Citations
+
+Every indexed code chunk stores metadata including:
+
+- Repository name
+- File path
+- Starting line number
+- Ending line number
+
+Answers include citations such as:
+
+
 backend/auth/jwt.py:L42-L78
-```
 
-This allows developers to quickly navigate to the relevant section of code.
+
+This allows users to immediately locate the relevant code in the repository.
+
+---
+
+## Hybrid Search (Vector + Keyword)
+
+The retrieval system combines two search techniques.
+
+### Semantic Search
+Uses embeddings to retrieve semantically relevant code.
+
+### Keyword Search (BM25)
+Ensures exact matches for:
+
+- Function names
+- Class names
+- Variables
+- Configuration keys
+
+Combining both techniques improves retrieval reliability.
 
 ---
 
 ## Multi-Repository Support
 
-Users can index multiple repositories and search:
+Users can index multiple repositories simultaneously and choose:
 
-- within a specific repository
-- across all indexed repositories
+- A specific repository
+- Or search across all indexed repositories
 
-This enables cross-repository comparisons.
+This allows comparison between different projects.
+
+---
+
+## Repository Map
+
+The system generates a high-level overview of each repository including:
+
+- Project file tree
+- Detected entrypoints
+- Important configuration files
+
+This helps users quickly understand the architecture.
 
 ---
 
-# 🖥️ User Interface
+# System Architecture
 
-The application provides a **Streamlit web interface**.
+The application consists of four main components.
 
-Users can:
+## Repository Ingestion
 
-1. Paste GitHub repository URLs  
-2. Ingest repositories  
-3. Ask natural language questions  
-4. View answers with code citations  
-5. Explore repository structure  
+The repository is downloaded from GitHub and extracted locally.
+
+Files are filtered to remove irrelevant content such as:
+
+- Build artifacts
+- Dependency folders
+- Binary files
+
+Relevant code and documentation are then processed.
 
 ---
+
+## Code Chunking
+
+Files are converted into structured chunks.
+
+Python files use AST parsing to extract:
+
+- Functions
+- Classes
+- Module headers
+
+Other file types use structured text chunking.
+
+Each chunk is stored with metadata.
+
+---
+
+## Indexing and Retrieval
+
+Chunks are converted into vector embeddings and stored in a vector index.
+
+Retrieval uses a hybrid strategy:
+
+- Vector similarity search
+- BM25 keyword search
+
+Results are merged and ranked.
+
+---
+
+## CRAG Pipeline
+
+When a user submits a query:
+
+1. Retrieve top code chunks
+2. Use an LLM grader to check relevance
+3. If relevance is low, rewrite the query
+4. Retrieve again
+5. Generate answer using final context
+
+This ensures answers remain grounded in repository code.
+
+---
+
 
 # 📂 Project Structure
 
